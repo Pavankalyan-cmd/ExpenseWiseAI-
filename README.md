@@ -1,5 +1,12 @@
 # 💰 ExpenseWise – AI-Powered Personal Finance Dashboard
 
+![Built with React](https://img.shields.io/badge/Built%20with-React-blue?logo=react)
+![Backend: Django](https://img.shields.io/badge/Backend-Django-green?logo=django)
+![LangChain](https://img.shields.io/badge/AI-LangChain-ff69b4?logo=openai)
+![Deployed on Azure](https://img.shields.io/badge/Deployed%20on-Azure-blue?logo=microsoftazure)
+![MIT License](https://img.shields.io/badge/License-MIT-yellow)
+![MongoDB](https://img.shields.io/badge/Database-MongoDB-green?logo=mongodb)
+
 🚀 **ExpenseWise** is a full-stack personal finance assistant built with modern tools and deployed in the cloud. It combines interactive budgeting, AI-powered insights, and seamless user experience to help you manage your money smarter, not harder.
 
 ---
