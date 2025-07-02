@@ -9,7 +9,8 @@ from api.langchainAgent.context import get_current_user_info
 from fuzzywuzzy import fuzz
 from api.langchainAgent.context import get_current_user_info
 
-BASE_URL = os.getenv("BACKEND_API_BASE_URL", "http://localhost:8000/")
+# BASE_URL = os.getenv("BACKEND_API_BASE_URL", "http://localhost:8000/")
+BASE_URL="http://localhost:8000/"
 
 VALID_TAGS = [
     "Salary", "Business", "Investment", "Other",
@@ -77,7 +78,7 @@ def add_transaction(input: str) -> str:
         data = json.loads(input)
         transaction_type = data.get("transaction_type")
         if transaction_type not in ["expense", "income"]:
-            return "❌ JSON input: 'transaction_type' must be 'expense' or 'income'."
+            return " JSON input: 'transaction_type' must be 'expense' or 'income'."
     except json.JSONDecodeError:
         input_lower = input.lower()
         if any(word in input_lower for word in ["spent", "paid", "bought"]):
@@ -85,8 +86,12 @@ def add_transaction(input: str) -> str:
         elif any(word in input_lower for word in ["received", "earned", "salary"]):
             transaction_type = "income"
         else:
-            return "❌ Could not determine transaction_type. Please include 'spent' or 'received'."
+            return " Could not determine transaction_type. Please include 'spent' or 'received'."
+        #   i spend 6k in groceries today
 
+        currentdate = ""
+
+        #   
         try:
             amount_match = re.search(r"(\d+(\.\d+)?)", input_lower)
             amount = float(amount_match.group()) if amount_match else 0
@@ -127,25 +132,25 @@ def add_transaction(input: str) -> str:
                 "description": ""
             }
         except Exception as e:
-            return f"❌ Failed to parse natural language input. {str(e)}"
+            return f" Failed to parse natural language input. {str(e)}"
 
     required_fields = ["user_id", "title", "amount", "date"]
     if any(field not in data for field in required_fields):
-        return "❌ Missing required fields."
+        return " Missing required fields."
 
     try:
         data["amount"] = float(data["amount"])
         if data["amount"] <= 0:
-            return "❌ Amount must be a positive number."
+            return " Amount must be a positive number."
     except:
-        return "❌ Invalid amount."
+        return " Invalid amount."
 
     try:
         parsed_date = datetime.strptime(data["date"], "%Y-%m-%d").date()
         if parsed_date > date.today():
-            return "❌ Date cannot be in the future."
+            return " Date cannot be in the future."
     except:
-        return "❌ Date must be in YYYY-MM-DD format."
+        return " Date must be in YYYY-MM-DD format."
 
     tag = data.get("tag")
     if not tag or tag == "Uncategorized" or tag not in VALID_TAGS:
@@ -166,15 +171,15 @@ def add_transaction(input: str) -> str:
         "Description": data.get("description", "")
     }
     if not user_id or not auth_token:
-        return "❌ Cannot fetch insights. Missing user context or auth token."
+        return " Cannot fetch insights. Missing user context or auth token."
 
     headers = {"Authorization": f"Bearer {auth_token}"}
 
 
     endpoint = "expenses/add/" if transaction_type == "expenses" else "income/add/"
     try:
-        response = requests.post(f"{BASE_URL}/{endpoint}", headers=headers,json=payload, timeout=10)
+        response = requests.post(f"{BASE_URL}/{endpoint}", headers=headers,json=payload, timeout=30)
         response.raise_for_status()
         return f"✅ {transaction_type.capitalize()} added successfully."
     except requests.exceptions.RequestException as e:
-        return f"❌ Failed to add {transaction_type}: {str(e)}"
+        return f" Failed to add {transaction_type}: {str(e)}"

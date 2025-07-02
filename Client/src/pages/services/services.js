@@ -1,6 +1,6 @@
 import axios from "axios";
 import { auth } from "../../firebase";
-const BASE_URL = "http://127.0.0.1:8000";
+const BASE_URL = process.env.REACT_APP_BASE_URL;;
 
 const api = axios.create({
   baseURL: BASE_URL,
@@ -115,3 +115,22 @@ export const sendAgentQuery = async ({ query,  chatHistory }) => {
 };
 
 
+
+export async function uploadBankStatement(formData) {
+  const user = auth.currentUser;
+  const token = await user.getIdToken(true);
+  const res = await fetch(`${BASE_URL}/transactions/upload/`, {
+    method: "POST",
+    body: formData,
+    headers: {
+      Authorization: `Bearer ${token}`, // ✅ Add token
+      // ❌ Don't add 'Content-Type' here — let the browser handle it!
+    },
+  });
+
+  if (!res.ok) {
+    throw new Error("Upload failed");
+  }
+
+  return await res.json();
+}

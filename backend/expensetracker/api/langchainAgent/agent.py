@@ -14,14 +14,16 @@ from api.langchainAgent.Tools.add_transaction_tool import add_transaction
 from api.langchainAgent.Tools.optimize_budget import optimize_budgets
 from api.langchainAgent.Tools.goal_tracker_tool import goal_tracker
 from api.langchainAgent.Tools.financial_insight_tool import financial_insight
+from api.langchainAgent.Tools.parse_and_upload_transactions import confirm_transaction_upload
+from api.langchainAgent.Tools.cashflow_forecast_tool import cashflow_forecast_tool
 
-# ✅ Load environment variables
+#  Load environment variables
 load_dotenv()
 
-# ✅ Logging config
+#  Logging config
 logging.basicConfig(level=logging.INFO)
 
-# ✅ Agent system prompt
+#  Agent system prompt
 AGENT_PROMPT = """
 You are FinPilot — an intelligent personal finance assistant.
 
@@ -45,7 +47,7 @@ You have access to tools for adding transactions, budgeting, insights, memory se
 📌 Keep responses friendly, helpful, and financially aware.
 """
 
-# ✅ Google API keys setup
+#  Google API keys 
 google_api_keys = [
     os.getenv("GOOGLE_API_KEY_1"),
     os.getenv("GOOGLE_API_KEY_2"),
@@ -56,7 +58,7 @@ if not google_api_keys:
     logging.error("Missing GOOGLE_API_KEY environment variables.")
     raise ValueError("Missing GOOGLE_API_KEY environment variables.")
 
-# ✅ LLM failover
+#  LLM failover
 def get_gemini_llm_with_failover():
     last_exception = None
     for api_key in google_api_keys:
@@ -67,19 +69,19 @@ def get_gemini_llm_with_failover():
                 temperature=0.2,
                 verbose=True,
             )
-            logging.info(f"✅ Gemini model loaded with key ending in {api_key[-4:]}")
+            logging.info(f"Gemini model loaded with key ending in {api_key[-4:]}")
             return llm
         except Exception as e:
             if "quota" in str(e).lower() or "resource exhausted" in str(e).lower():
-                logging.warning(f"⚠️ Quota issue with API key ending in {api_key[-4:]}, trying next...")
+                logging.warning(f" Quota issue with API key ending in {api_key[-4:]}, trying next...")
                 continue
             last_exception = e
-    raise Exception("❌ All Gemini API keys exhausted.") if last_exception is None else last_exception
+    raise Exception(" All Gemini API keys exhausted.") if last_exception is None else last_exception
 
-# ✅ Load LLM
+# Load LLM
 llm = get_gemini_llm_with_failover()
 
-# ✅ MongoDB connection
+#  MongoDB connection
 MONGO_URI = os.getenv("MONGO_URI")
 if not MONGO_URI:
     raise ValueError("Missing MONGO_URI environment variable.")
@@ -87,13 +89,13 @@ if not MONGO_URI:
 mongo_client = MongoClient(MONGO_URI)
 mongo_collection = mongo_client["expensestracker"]["UserMemory"]
 
-# ✅ Embeddings
+#  Embeddings
 embedding_fn = GoogleGenerativeAIEmbeddings(
     model="models/embedding-001",
     google_api_key=google_api_keys[0]
 )
 
-# ✅ Vector memory store
+#  Vector memory store
 vectorstore = MongoDBAtlasVectorSearch(
     collection=mongo_collection,
     embedding=embedding_fn,
@@ -103,7 +105,7 @@ vectorstore = MongoDBAtlasVectorSearch(
 store = vectorstore
 checkpointer = MemorySaver()
 
-# ✅ Per-user memory tools
+#  Per-user memory tools
 def get_user_tools(user_id):
     namespace = (user_id,)
     return [
@@ -112,13 +114,15 @@ def get_user_tools(user_id):
     ]
 
 
-# ✅ Create agent
+#  Create agent
 def create_user_agent(user_id: str):
     tools = [
         add_transaction,
         optimize_budgets,
         goal_tracker,
         financial_insight,
+        confirm_transaction_upload,
+        cashflow_forecast_tool,
         *get_user_tools(user_id)
     ]
 
@@ -130,11 +134,11 @@ def create_user_agent(user_id: str):
             store=store,
             checkpointer=checkpointer
         )
-        logging.info(f"✅ Agent created for user {user_id}")
+        logging.info(f"Agent created for user {user_id}")
         return agent
     except Exception as e:
         logging.error(f"[Agent Creation Error] user_id={user_id} | {e}")
         traceback.print_exc()
-        raise RuntimeError("🚨 Agent creation failed. Please try again later.")
+        raise RuntimeError(" Agent creation failed. Please try again later.")
 
 

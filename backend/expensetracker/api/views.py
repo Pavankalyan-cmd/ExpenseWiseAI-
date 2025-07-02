@@ -14,18 +14,46 @@ from django.utils.decorators import method_decorator
 import firebase_admin
 from django.http import JsonResponse
 from firebase_admin import auth, credentials, firestore
-
-
+from rest_framework.parsers import MultiPartParser
+import tempfile
+import json
+from api.langchainAgent.Tools.parse_and_upload_transactions import parse_and_upload_transactions
 import os
 
-# Externalize Firebase credentials path
-FIREBASE_CREDENTIAL_PATH = os.getenv("FIREBASE_CREDENTIAL_PATH", "credentials/firebase.json")
 
-if not firebase_admin._apps:
-    cred = credentials.Certificate(FIREBASE_CREDENTIAL_PATH)
+def initialize_firebase():
+    if firebase_admin._apps:
+        return
+
+    raw_json = os.getenv("FIREBASE_CREDENTIAL_JSON")  # Azure
+    file_path = os.getenv("FIREBASE_CREDENTIAL_PATH", "credentials/firebase.json")  # Local fallback
+
+    if raw_json:
+        try:
+            # Decode once
+            cred_dict = json.loads(raw_json)
+
+            # If still a string (i.e., double quotes were around whole JSON), decode again
+            if isinstance(cred_dict, str):
+                cred_dict = json.loads(cred_dict)
+
+            with tempfile.NamedTemporaryFile(mode='w+', delete=False, suffix='.json') as temp_cred_file:
+                json.dump(cred_dict, temp_cred_file)
+                temp_cred_file.flush()
+                cred = credentials.Certificate(temp_cred_file.name)
+        except Exception as e:
+            raise RuntimeError(f"Invalid FIREBASE_CREDENTIAL_JSON: {e}")
+    else:
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"Firebase credential file not found at {file_path}")
+        cred = credentials.Certificate(file_path)
+
     firebase_admin.initialize_app(cred)
-db = firestore.client()
 
+
+# Always call this once before using Firestore
+initialize_firebase()
+db = firestore.client()
 
 
 def firebase_authenticated(view_func):
@@ -53,21 +81,22 @@ def firebase_authenticated(view_func):
 # User Views
 @method_decorator(firebase_authenticated, name='dispatch')
 class UserListCreateView(APIView):
-    # @firebase_authenticated
+    
     def get(self, request):
         print(request.headers)
         users = User.objects.all()
         serializer = UserSerializer(users, many=True)
         return Response(serializer.data)
-    # @firebase_authenticated
-    @ratelimit(key='ip', rate='10/m', method='POST', block=True)
+
     def post(self, request):
+        if getattr(request, 'limited', False):
+            return Response({'detail': 'Rate limit exceeded'}, status=429)
+
         serializer = UserSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 @method_decorator(firebase_authenticated, name='dispatch')
 class UserDetailView(APIView):
     def get_object(self, pk):
@@ -385,3 +414,52 @@ class IncomeListCreateViewLlm(APIView):
             logger.warning("IncomeListCreateViewLlm: Serializer validation failed: %s. Data: %s", serializer.errors, data)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
+
+import logging
+
+logger = logging.getLogger(__name__)
+@method_decorator(firebase_authenticated, name='dispatch')
+class TransactionUploadView(APIView):
+    parser_classes = [MultiPartParser]
+
+    def post(self, request):
+        file = request.FILES.get("file")
+        file_type = request.data.get("file_type")
+        pdf_password = request.data.get("pdf_password", None)
+
+        user_id = getattr(request, "uid", "anonymous")
+        auth_token = request.headers.get("Authorization", "").split(" ")[-1]
+
+        if not file or not file_type:
+            return Response({"error": "Missing file or file_type."}, status=400)
+
+        try:
+            # Save uploaded file temporarily
+            with tempfile.NamedTemporaryFile(delete=False, suffix=f".{file_type}") as tmp:
+                for chunk in file.chunks():
+                    tmp.write(chunk)
+                tmp_path = tmp.name
+
+            logger.info(f"Saved uploaded file at: {tmp_path}")
+
+            # Setup user context
+            set_user_info(user_id, auth_token)
+
+            #  Wrap tool call in try/except
+            try:
+                result = parse_and_upload_transactions.invoke({
+                    "file_path": tmp_path,
+                    "file_type": file_type,
+                    "pdf_password": pdf_password,
+                })
+            except Exception as e:
+                logger.exception("Tool execution failed")
+                return Response({"error": f"Tool error: {str(e)}"}, status=500)
+
+            os.remove(tmp_path)
+            return Response({"message": result}, status=200)
+
+        except Exception as e:
+            logger.exception("Upload failed")
+            return Response({"error": str(e)}, status=500)

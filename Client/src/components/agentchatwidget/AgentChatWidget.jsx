@@ -7,11 +7,16 @@ import {
   FiMoon,
   FiMic,
   FiMicOff,
+  FiUpload,
 } from "react-icons/fi";
 import ReactMarkdown from "react-markdown";
 import { useNavigate } from "react-router-dom";
-import { sendAgentQuery } from "../../pages/services/services";
+import {
+  sendAgentQuery,
+  uploadBankStatement,
+} from "../../pages/services/services";
 import { v4 as uuidv4 } from "uuid";
+import { IconButton, Tooltip } from "@mui/material";
 import "./AgentChatWidget.css";
 
 export default function AgentChatWidget({ userId, userName = "User" }) {
@@ -22,6 +27,7 @@ export default function AgentChatWidget({ userId, userName = "User" }) {
   const [loading, setLoading] = useState(false);
   const [theme, setTheme] = useState("dark");
   const [listening, setListening] = useState(false);
+  const [file, setFile] = useState(null);
 
   const recognitionRef = useRef(null);
   const chatEndRef = useRef(null);
@@ -52,7 +58,6 @@ export default function AgentChatWidget({ userId, userName = "User" }) {
     if (e.key === "Enter") handleSend();
   };
 
-  // ✅ Accepts optional input for direct transcript sending
   const handleSend = async (customInput) => {
     const message = (customInput ?? input).trim();
     if (!message) return;
@@ -73,6 +78,7 @@ export default function AgentChatWidget({ userId, userName = "User" }) {
       const aiMessage = { id: uuidv4(), role: "ai", content: data.response };
       setChat((prev) => [...prev, aiMessage]);
       setChatHistory([...updatedHistory, aiMessage]);
+      window.location.reload();
     } catch (err) {
       const fallback = {
         id: uuidv4(),
@@ -97,10 +103,7 @@ export default function AgentChatWidget({ userId, userName = "User" }) {
 
       let finalTranscript = "";
 
-      recognition.onstart = () => {
-        console.log("🎙️ Voice recognition started");
-      };
-
+      recognition.onstart = () => console.log("🎙️ Voice recognition started");
       recognition.onresult = (event) => {
         let interim = "";
         for (let i = event.resultIndex; i < event.results.length; ++i) {
@@ -111,7 +114,7 @@ export default function AgentChatWidget({ userId, userName = "User" }) {
             interim += transcript;
           }
         }
-        setInput(finalTranscript + interim); // Live update while speaking
+        setInput(finalTranscript + interim);
       };
 
       recognition.onerror = (e) => {
@@ -122,10 +125,9 @@ export default function AgentChatWidget({ userId, userName = "User" }) {
       recognition.onend = () => {
         console.log("🛑 Voice recognition ended");
         setListening(false);
-
         if (finalTranscript.trim()) {
-          setInput(finalTranscript.trim()); // Optional: keep it visible
-          handleSend(finalTranscript.trim()); // ✅ Send directly
+          setInput(finalTranscript.trim());
+          handleSend(finalTranscript.trim());
         }
       };
 
@@ -145,6 +147,72 @@ export default function AgentChatWidget({ userId, userName = "User" }) {
     navigate("/chat", { state: { chatHistory } });
   };
 
+  const handleFileChange = async (e) => {
+    const selectedFile = e.target.files[0];
+    if (!selectedFile) return;
+
+    setFile(selectedFile);
+    setLoading(true);
+
+    setChat((prev) => [
+      ...prev,
+      {
+        id: uuidv4(),
+        role: "user",
+        content: `📤 Uploaded: ${selectedFile.name}`,
+      },
+    ]);
+
+    const formData = new FormData();
+    formData.append("file", selectedFile);
+
+    const isPDF = selectedFile.name.toLowerCase().endsWith(".pdf");
+    formData.append("file_type", isPDF ? "pdf" : "csv"); //  required by backend
+
+    if (isPDF) {
+      const password = prompt("🔐 Enter PDF password (required):");
+      if (!password) {
+        setChat((prev) => [
+          ...prev,
+          {
+            id: uuidv4(),
+            role: "ai",
+            content: "❌ PDF password is required to upload this file.",
+          },
+        ]);
+        setLoading(false);
+        setFile(null);
+        return;
+      }
+      formData.append("pdf_password", password); //  match backend key
+    }
+
+    try {
+      const res = await uploadBankStatement(formData);
+      setChat((prev) => [
+        ...prev,
+        {
+          id: uuidv4(),
+          role: "ai",
+          content: res.message || " File uploaded and parsed.",
+        },
+      ]);
+      window.location.reload();
+    } catch (err) {
+      setChat((prev) => [
+        ...prev,
+        {
+          id: uuidv4(),
+          role: "ai",
+          content: "Failed to upload or parse file. Please try again.",
+        },
+      ]);
+    } finally {
+      setLoading(false);
+      setFile(null);
+    }
+  };
+
   return (
     <div className={`chatbot-container ${theme}`}>
       {isOpen && (
@@ -153,9 +221,9 @@ export default function AgentChatWidget({ userId, userName = "User" }) {
             <span>💬 ExpenseWise Assistant</span>
             <div className="chat-actions">
               <button
+                onClick={handleGoToFullPage}
                 className="expand-button"
                 title="Go Full Page"
-                onClick={handleGoToFullPage}
               >
                 🖥
               </button>
@@ -171,26 +239,11 @@ export default function AgentChatWidget({ userId, userName = "User" }) {
               <div key={msg.id} className={`chat-msg ${msg.role}`}>
                 {msg.role === "ai" && <div className="avatar">🤖</div>}
                 <div className={`bubble ${msg.role}`}>
-                  <ReactMarkdown
-                    components={{
-                      strong: ({ node, ...props }) => <strong {...props} />,
-                      code: ({ node, inline, ...props }) =>
-                        inline ? (
-                          <code className="inline-code" {...props} />
-                        ) : (
-                          <pre className="block-code">
-                            <code {...props} />
-                          </pre>
-                        ),
-                    }}
-                  >
-                    {msg.content}
-                  </ReactMarkdown>
+                  <ReactMarkdown>{msg.content}</ReactMarkdown>
                 </div>
                 {msg.role === "user" && <div className="avataruser">🧑</div>}
               </div>
             ))}
-
             {loading && (
               <div className="chat-msg ai">
                 <div className="avatar">🤖</div>
@@ -212,6 +265,22 @@ export default function AgentChatWidget({ userId, userName = "User" }) {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyPress}
             />
+            <input
+              type="file"
+              accept=".pdf,.csv"
+              onChange={handleFileChange}
+              id="upload-file"
+              style={{ display: "none" }}
+            />
+            <label htmlFor="upload-file">
+              <Tooltip title="Upload Bank Statement">
+                <IconButton component="span">
+                  <FiUpload
+                    style={{ color: theme === "dark" ? "white" : "black" }}
+                  />
+                </IconButton>
+              </Tooltip>
+            </label>
             <button onClick={() => handleSend()} disabled={loading}>
               <FiSend />
             </button>
@@ -225,7 +294,6 @@ export default function AgentChatWidget({ userId, userName = "User" }) {
           </div>
         </div>
       )}
-
       {!isOpen && (
         <button className="chat-toggle" onClick={toggleChat}>
           <FiMessageSquare size={24} />

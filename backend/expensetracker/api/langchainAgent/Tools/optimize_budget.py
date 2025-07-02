@@ -7,9 +7,7 @@ from api.langchainAgent.context import get_current_user_info
 import os
 
 
-# IMPORTANT: Ensure BASE_URL is correctly defined, preferably from settings.
-# e.g., settings.API_BASE_URL = 'http://localhost:8000/api'
-BASE_URL = os.getenv("BACKEND_API_BASE_URL", "http://localhost:8000/")
+BASE_URL = os.getenv("BACKEND_API_BASE_URL", "http://localhost:8000")
 
 
 def generate_unique_id():
@@ -28,7 +26,7 @@ def optimize_budgets(query: str) -> str:
 
     user_id, auth_token = get_current_user_info()
     if not user_id or not auth_token:
-        return "❌ Missing user authentication. Please log in."
+        return "Missing user authentication. Please log in."
 
     # Format token as per your Django/Firebase auth middleware
     headers = {"Authorization": f"Bearer {auth_token}"}
@@ -53,22 +51,22 @@ def optimize_budgets(query: str) -> str:
 
     # Handle unauthorized
     if "error" in expenses:
-        return "❌ Unauthorized access to expenses. Please check your login/token."
+        return "Unauthorized access to expenses. Please check your login/token."
     if "error" in income:
         return "❌ Unauthorized access to income. Please check your login/token."
 
     if not income:
-        return "⚠️ No income records found. Please add income data first."
+        return " No income records found. Please add income data first."
 
     # Calculate totals
     try:
         total_income = sum(float(item["Amount"]) for item in income)
     except (KeyError, ValueError, TypeError) as e:
-        return f"❌ Error parsing income data: {str(e)}"
+        return f"Error parsing income data: {str(e)}"
     try:
         total_expense = sum(float(item["Amount"]) for item in expenses)
     except (KeyError, ValueError, TypeError) as e:
-        return f"❌ Error parsing expense data: {str(e)}"
+        return f"Error parsing expense data: {str(e)}"
     savings = total_income - total_expense
 
     # Categorize expenses
@@ -82,12 +80,12 @@ def optimize_budgets(query: str) -> str:
 
     # Format response
     response = f"""
-📊 **Budget Summary**:
-- 💰 Total Income: ₹{total_income:,.2f}
-- 💸 Total Expenses: ₹{total_expense:,.2f}
-- 💼 Estimated Savings: ₹{savings:,.2f} {"❗ Overspending!" if savings < 0 else "✅"}
+**Budget Summary**:
+- Total Income: ₹{total_income:,.2f}
+- Total Expenses: ₹{total_expense:,.2f}
+- Estimated Savings: ₹{savings:,.2f} {" Overspending!" if savings < 0 else "✅"}
 
-🔍 **Category Breakdown**:
+ **Category Breakdown**:
 """
     for cat, amt in category_totals.items():
         percent = (amt / total_expense) * 100 if total_expense else 0

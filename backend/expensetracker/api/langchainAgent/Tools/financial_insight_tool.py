@@ -26,13 +26,13 @@ def financial_insight(query: str) -> str:
 
     user_id, auth_token = get_current_user_info()
     if not user_id or not auth_token:
-        return "❌ Cannot fetch insights. Missing user context or auth token."
+        return " Cannot fetch insights. Missing user context or auth token."
 
     headers = {"Authorization": f"Bearer {auth_token}"}
 
     def fetch(endpoint):
         try:
-            res = requests.get(f"{BASE_URL}/{endpoint}/{user_id}/", headers=headers, timeout=10)
+            res = requests.get(f"{BASE_URL}/{endpoint}/{user_id}/", headers=headers, timeout=30)
             if res.status_code == 401:
                 return {"error": "unauthorized"}
             if res.status_code != 200:
@@ -46,9 +46,9 @@ def financial_insight(query: str) -> str:
     incomes = fetch("incomes")
 
     if "error" in expenses:
-        return "❌ Unable to fetch expenses. Ensure you're logged in."
+        return " Unable to fetch expenses. Ensure you're logged in."
     if "error" in incomes:
-        return "❌ Unable to fetch incomes. Ensure you're logged in."
+        return "Unable to fetch incomes. Ensure you're logged in."
     if not expenses and not incomes:
         return "📭 No financial records found."
 
@@ -125,7 +125,7 @@ def financial_insight(query: str) -> str:
                     month_num = list(month_name).index(month_name_str)
                     target_date = datetime(int(year_str), month_num, 1)
                 except:
-                    return f"❌ Invalid month: {month_name_str}"
+                    return f"Invalid month: {month_name_str}"
 
         if not target_date:
             current_month_str = current_date.strftime("%Y-%m")
@@ -180,4 +180,4 @@ def financial_insight(query: str) -> str:
         return response.strip()
 
     except Exception as e:
-        return f"❌ Error generating insights: {str(e)}"
+        return f" Error generating insights: {str(e)}"
