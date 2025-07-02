@@ -78,7 +78,6 @@ export default function AgentChatWidget({ userId, userName = "User" }) {
       const aiMessage = { id: uuidv4(), role: "ai", content: data.response };
       setChat((prev) => [...prev, aiMessage]);
       setChatHistory([...updatedHistory, aiMessage]);
-      window.location.reload();
     } catch (err) {
       const fallback = {
         id: uuidv4(),
@@ -197,7 +196,6 @@ export default function AgentChatWidget({ userId, userName = "User" }) {
           content: res.message || " File uploaded and parsed.",
         },
       ]);
-      window.location.reload();
     } catch (err) {
       setChat((prev) => [
         ...prev,
