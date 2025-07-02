@@ -1,6 +1,6 @@
 
 <p align="center">
-  <img src="https://i.postimg.cc/FKgCVr7d/Chat-GPT-Image-Jun-28-2025-02-29-28-PM.png" alt="ExpenseWise Banner" width="50%" height="50%" />
+  <img src="https://i.postimg.cc/FKgCVr7d/Chat-GPT-Image-Jun-28-2025-02-29-28-PM.png" alt="ExpenseWise Banner" width="30%" height="30%" />
 </p>
 
 
