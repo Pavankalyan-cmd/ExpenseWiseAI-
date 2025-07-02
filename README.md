@@ -92,7 +92,7 @@ cd frontend
 npm install
 npm start
 ```
-🎯 Roadmap (Post-MVP)
+### 🎯 Roadmap (Post-MVP)
  AI budget planner chatbot
 
  Transaction category auto-correction via LLM
@@ -103,14 +103,14 @@ npm start
 
  Multi-user shared finance dashboard
 
-🤝 Contributing
+### 🤝 Contributing
 Pull requests are welcome!
 Please open an issue first to discuss what you'd like to contribute.
 
-📃 License
+### 📃 License
 This project is licensed under the MIT License.
 
-🙌 Acknowledgements
+### 🙌 Acknowledgements
 OpenAI / LangChain
 
 Firebase
@@ -121,13 +121,11 @@ scikit-learn, PyPDF2, FuzzyWuzzy
 
 Vercel & Azure App Services
 
-🔗 Connect with Me
-📧 Email: yourname@example.com
+### 🔗 Connect with Me
+📧 Email:  vandanapupavan1@gmail.com
 
 💼 LinkedIn: Pavankalyan Vandanapu
 
 🌐 Portfolio: pavankalyanv.netlify.app
 
-vbnet
-Copy
-Edit
+
