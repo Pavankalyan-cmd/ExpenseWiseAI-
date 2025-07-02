@@ -1,3 +1,11 @@
+
+<p align="center">
+  <img src="https://i.postimg.cc/FKgCVr7d/Chat-GPT-Image-Jun-28-2025-02-29-28-PM.png" alt="ExpenseWise Banner" width="80%" />
+</p>
+
+
+
+
 # 💰 ExpenseWise – AI-Powered Personal Finance Dashboard
 
 ![Built with React](https://img.shields.io/badge/Built%20with-React-blue?logo=react)
